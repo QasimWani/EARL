@@ -14,7 +14,7 @@ GAMMA = 0.99  # discount factor
 TAU = 1e-3  # for soft update of target parameters
 LR = 5e-4  # learning rate
 UPDATE_EVERY = 4  # how often to update the network
-WEIGHT_STATE = 0.0  # how much importance to give to the state predictions
+WEIGHT_STATE = 0.1  # how much importance to give to the state predictions
 
 
 class Agent:
@@ -102,16 +102,17 @@ class Agent:
         states, actions, rewards, next_states, done = experiences
 
         # Implement SGD using Adam as regularizer
-        p_actions, p_next_states = self.qnetwork_target(next_states)
+        p_na, p_nns = self.qnetwork_target(next_states)
+        p_a, p_ns = self.qnetwork_local(states)
 
-        Q_targets_next = p_actions.detach().max(1)[0].unsqueeze(1)
+        Q_targets_next = p_na.detach().max(1)[0].unsqueeze(1)
         Q_targets = rewards + (self.gamma * Q_targets_next * (1 - done))
-        Q_expected = self.qnetwork_local(states)[0].gather(1, actions)
+        Q_expected = p_a.gather(1, actions)
 
         # set loss as mse.
         loss = (1.0 - WEIGHT_STATE) * F.mse_loss(
             Q_expected, Q_targets
-        ) + WEIGHT_STATE * F.mse_loss(p_next_states, next_states)
+        ) + WEIGHT_STATE * F.mse_loss(p_nns, self.qnetwork_local(p_ns)[1])
 
         self.optimizer.zero_grad()
         loss.backward()
